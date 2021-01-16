@@ -23,7 +23,20 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
-        pass
+        self.board_allocations = [[],[],[]]
+    
+    def get_pairs(my_cards):
+        ranks = {}
+        for card in my_cards:
+            card_rank = card[0] #2 - 9, T, J, Q, K, A
+            card_suit = card[1] # d, h, s, c
+
+            if card_rank in ranks: #if we've seen this rank before, add the card to our list
+                ranks[card_rank].append(card)
+            else: #make a new list if we've never seen this one before
+                ranks[card_rank] = [card]
+
+            
 
     def handle_new_round(self, game_state, round_state, active):
         '''
@@ -66,9 +79,6 @@ class Player(Bot):
         #     my_cards = previous_board_state.hands[active]  # your cards
         #     opp_cards = previous_board_state.hands[1-active]  # opponent's cards or [] if not revealed
         pass
-    
-    def hey_bby(self):
-        print("hey bby")
 
     def get_actions(self, game_state, round_state, active):
         '''
@@ -96,15 +106,37 @@ class Player(Bot):
         # net_upper_raise_bound = round_state.raise_bounds()[1] # max raise across 3 boards
         # net_cost = 0 # keep track of the net additional amount you are spending across boards this round
         my_actions = [None] * NUM_BOARDS
+        high_cards = []
+        for card in my_cards:
+            if (card[0] == 'A' or card[0] == 'J' or card[0] == 'Q' or card[0] == 'K'):
+                high_cards.append(card)
+        not_high_cards_set = set(my_cards) - set(high_cards)
+        not_high_cards = list(not_high_cards_set)
+        if len(high_cards) == 2: # if we have a pair of high cards, then make sure they're both on the third board
+            self.board_allocations[2] = high_cards[0:2]
+            self.board_allocations[0] = not_high_cards[0:2]
+            self.board_allocations[1] = not_high_cards[2:4]
+        elif len(high_cards) == 1: # if we have one high card, then make sure it's on the third board
+            self.board_allocations[2] = [high_cards[0], []]
+            self.board_allocations[0] = not_high_cards[0:2]
+            self.board_allocations[1] = not_high_cards[2:4]
+            self.board_allocations[2][1] = not_high_cards[4]
+        elif len(high_cards) == 4: # big money
+            self.board_allocations[2] = high_cards[0:2]
+            self.board_allocations[1] = high_cards[2:4]
+            self.board_allocations[0] = not_high_cards[0:2]            
+        else:
+            self.board_allocations[2] = my_cards[0:2]
+            self.board_allocations[0] = my_cards[2:4]
+            self.board_allocations[1] = my_cards[4:6]
         for i in range(NUM_BOARDS):
-            if AssignAction in legal_actions[i]:
-                cards = [my_cards[2*i], my_cards[2*i+1]]
-                my_actions[i] = AssignAction(cards)
-            elif CheckAction in legal_actions[i]:  # check-call
-                my_actions[i] = CheckAction()
-            else:
-                my_actions[i] = CallAction()
-            self.hey_bby()
+                if AssignAction in legal_actions[i]:
+                    my_actions[i] = AssignAction(self.board_allocations[i])
+                elif CheckAction in legal_actions[i]:  # check-call
+                    my_actions[i] = CheckAction()
+                else:
+                    my_actions[i] = CallAction()
+        print(my_cards)
         return my_actions
 
 
